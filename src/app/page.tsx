@@ -5,6 +5,18 @@ import { motion } from 'framer-motion'
 import StreakCounter from '@/components/StreakCounter'
 import GymVisitLogger from '@/components/GymVisitLogger'
 import ShareButton from '@/components/ShareButton'
+import Calendar from '@/components/Calendar'
+import Stats from '@/components/Stats'
+import Achievements from '@/components/Achievements'
+import Settings from '@/components/Settings'
+
+interface UserSettings {
+  notifications: boolean
+  weeklyGoal: number
+  reminderTime: string
+  shareProgress: boolean
+  theme: 'dark' | 'light'
+}
 
 export default function Home() {
   // Initialize visits from localStorage
@@ -16,13 +28,40 @@ export default function Home() {
     return []
   })
 
+  // Initialize settings from localStorage
+  const [settings, setSettings] = useState<UserSettings>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gymSettings')
+      return saved ? JSON.parse(saved) : {
+        notifications: false,
+        weeklyGoal: 5,
+        reminderTime: '09:00',
+        shareProgress: true,
+        theme: 'dark'
+      }
+    }
+    return {
+      notifications: false,
+      weeklyGoal: 5,
+      reminderTime: '09:00',
+      shareProgress: true,
+      theme: 'dark'
+    }
+  })
+
   const [currentStreak, setCurrentStreak] = useState(0)
+  const [longestStreak, setLongestStreak] = useState(0)
 
   // Save visits to localStorage and recalculate streak whenever visits change
   useEffect(() => {
     localStorage.setItem('gymVisits', JSON.stringify(visits))
     calculateStreak()
   }, [visits])
+
+  // Save settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('gymSettings', JSON.stringify(settings))
+  }, [settings])
 
   const calculateStreak = () => {
     if (visits.length === 0) {
@@ -61,6 +100,7 @@ export default function Home() {
     }
 
     setCurrentStreak(streak)
+    setLongestStreak(prev => Math.max(prev, streak))
   }
 
   const handleLogVisit = (date: string) => {
@@ -70,6 +110,11 @@ export default function Home() {
   }
 
   const handleShare = async () => {
+    if (!settings.shareProgress) {
+      alert('Sharing is disabled in settings')
+      return
+    }
+
     const shareText = `🏋️‍♂️ I'm on a ${currentStreak}-day gym streak! 💪 #GymStreak`
     const shareUrl = window.location.href
 
@@ -98,96 +143,83 @@ export default function Home() {
       })
   }
 
+  const handleSettingsUpdate = (newSettings: UserSettings) => {
+    setSettings(newSettings)
+  }
+
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <main className={`min-h-screen p-4 ${settings.theme === 'dark' ? 'bg-background' : 'bg-gray-100'}`}>
       <motion.div
-        className="max-w-md w-full space-y-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        className="max-w-6xl mx-auto space-y-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
       >
         {/* Header */}
         <motion.div
           className="text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <h1 className="text-3xl font-bold text-foreground">Gym Streak</h1>
+          <h1 className="text-4xl font-bold text-foreground">Gym Streak</h1>
           <p className="text-foreground/70">Track your fitness journey</p>
         </motion.div>
 
-        {/* Streak Counter */}
-        <StreakCounter
-          streak={currentStreak}
-          totalVisits={visits.length}
-        />
-
-        {/* Visit Logger */}
-        <GymVisitLogger
-          onLogVisit={handleLogVisit}
-          visits={visits}
-        />
-
-        {/* Share Button */}
-        <ShareButton
-          onClick={handleShare}
-          streak={currentStreak}
-        />
-
-        {/* Stats Section */}
-        <motion.div
-          className="mt-8 p-4 bg-dark-light rounded-lg"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <h2 className="text-lg font-semibold text-foreground mb-2">
-            Your Stats
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-3 bg-background/50 rounded-lg">
-              <p className="text-sm text-foreground/70">Total Visits</p>
-              <p className="text-2xl font-bold text-primary">{visits.length}</p>
-            </div>
-            <div className="text-center p-3 bg-background/50 rounded-lg">
-              <p className="text-sm text-foreground/70">Current Streak</p>
-              <p className="text-2xl font-bold text-primary">{currentStreak}</p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Progress Section */}
-        <motion.div
-          className="p-4 bg-dark-light rounded-lg"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <h2 className="text-lg font-semibold text-foreground mb-2">
-            Yearly Progress
-          </h2>
-          <div className="relative h-4 bg-background rounded-full overflow-hidden">
-            <div
-              className="absolute h-full bg-primary transition-all duration-500"
-              style={{ width: `${(visits.length / 365) * 100}%` }}
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column */}
+          <div className="space-y-8">
+            <StreakCounter
+              streak={currentStreak}
+              totalVisits={visits.length}
+            />
+            <GymVisitLogger
+              onLogVisit={handleLogVisit}
+              visits={visits}
+            />
+            <ShareButton
+              onClick={handleShare}
+              streak={currentStreak}
+              disabled={!settings.shareProgress}
             />
           </div>
-          <p className="text-sm text-foreground/70 text-center mt-2">
-            {Math.round((visits.length / 365) * 100)}% of yearly goal
-          </p>
-        </motion.div>
-      </motion.div>
 
-      {/* Footer */}
-      <motion.footer
-        className="mt-8 text-center text-sm text-foreground/50"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-      >
-        <p>Keep pushing! 💪</p>
-      </motion.footer>
+          {/* Middle Column */}
+          <div className="space-y-8">
+            <Calendar visits={visits} />
+            <Stats
+              visits={visits}
+              currentStreak={currentStreak}
+              longestStreak={longestStreak}
+            />
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-8">
+            <Achievements
+              visits={visits}
+              currentStreak={currentStreak}
+            />
+            <Settings
+              initialSettings={settings}
+              onSave={handleSettingsUpdate}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <motion.footer
+          className="text-center text-sm text-foreground/50 py-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          <p>Keep pushing! 💪</p>
+          <p className="mt-2">
+            Total Visits: {visits.length} | Longest Streak: {longestStreak} days
+          </p>
+        </motion.footer>
+      </motion.div>
     </main>
   )
 }
