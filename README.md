@@ -24,7 +24,7 @@ A modern web application to track your daily gym visits and maintain your fitnes
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/gym-tracker-app.git
+git clone https://github.com/abrahao-dev/gym-tracker-app.git
 ```
 
 2. Install dependencies:
